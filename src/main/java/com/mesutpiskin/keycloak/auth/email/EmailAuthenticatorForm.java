@@ -36,6 +36,46 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
 
     @Override
     protected Response challenge(AuthenticationFlowContext context, String error, String field) {
+        logger.info("CHALLENGE");
+
+        String HttpMethod = context.getSession().getContext().getHttpRequest().getHttpMethod();
+        logger.info("HttpMethod: " + HttpMethod);
+
+//        logger.info("AuthenticationFlowContext.getAuthenticationSession: " + session); //useless
+//        logger.info("AuthenticationFlowContext.getAuthenticationSession.getParentSession: " + session.getParentSession()); //useless
+//        logger.info("AuthenticationFlowContext.getAuthenticationSession.getRedirectUri: " + session.getRedirectUri()); // useless, for all three email OTPs gives https://kcsignicat.first8.nl/realms/pre-pro-connected/account/
+
+        logger.info("AuthenticationContext.getHttpRequest().getHttpHeaders().getRequestHeaders(): " + context.getHttpRequest().getHttpHeaders().getRequestHeaders());
+        // same but KeycloakContext instead of AuthenticationFlowContext:
+//        logger.info("AuthenticationFlowContext.getSession().getContext().getHttpRequest().getHttpHeaders().getRequestHeaders(): " + context.getSession().getContext().getHttpRequest().getHttpHeaders().getRequestHeaders());
+
+        // Useless, the query parameters are key, execution, client_id, tab_id, client_data:
+//        logger.info("AuthenticationFlowContext.getHttpRequest().getUri().getRequestUri(): " + context.getSession().getContext().getHttpRequest().getUri().getRequestUri());
+//        //same but KeycloakContext instead of AuthenticationFlowContext:
+//        logger.info("AuthenticationFlowContext.getSession().getContext().getHttpRequest().getUri().getRequestUri(): " + context.getSession().getContext().getHttpRequest().getUri().getRequestUri());
+
+        //        logger.info("context.getHttpRequest().getDecodedFormParameters(): " + formData); //useless
+
+
+        //same but KeycloakContext instead of AuthenticationFlowContext:
+//        logger.info("AuthenticationFlowContext.getSession().getContext().getHttpRequest().getHttpMethod(): " + context.getSession().getContext().getHttpRequest().getHttpMethod());
+
+        /* Ignore link-scanners (from mail providers like SafeLink for Outlook).
+         * Probably don't need to do anything with LoginFormsProvider in this case.
+         */
+//        if(HttpMethod.equals("HEAD")) {
+//            context.attempted();
+//
+//            logger.info("TRYING Response.noContent().build() ");
+//            return Response.noContent().build();
+//            /*
+//                Alternatives that I've tried:
+//                - Response.ok().build()         -> AuthenticationFlowException
+//                - Response.noContent().build()  -> AuthenticationFlowException.
+//                Alternatives that I want to try: Response.noContent().build(), Response.notModified().build(), Response.accepted().build(), null
+//             */
+//        }
+
         generateAndSendEmailCode(context);
 
         LoginFormsProvider form = context.form().setExecution(context.getExecution().getId());
@@ -47,6 +87,8 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
             }
         }
         Response response = form.createForm("email-code-form.ftl");
+//        logger.info("Response form.createForm(\"email-code-form.ftl\") -> getHeaders(): " + response.getHeaders()); //useless, always only [Content-Language=en,Content-Type=text/html;charset=utf-8]
+
         context.challenge(response);
         return response;
     }
@@ -85,6 +127,7 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
         }
 
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
+
         if (formData.containsKey("resend")) {
             resetEmailCode(context);
             challenge(context, null);
@@ -106,7 +149,7 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
             if (Long.parseLong(ttl) < System.currentTimeMillis()) {
                 // expired
                 context.getEvent().user(userModel).error(Errors.EXPIRED_CODE);
-                Response challengeResponse = challenge(context, Messages.EXPIRED_ACTION_TOKEN_SESSION_EXISTS, EmailConstants.CODE);
+                Response challengeResponse = challenge(context, Messages.EXPIRED_ACTION_TOKEN_SESSION_EXISTS, EmailConstants.CODE); //Response but in useless conditional block
                 context.failureChallenge(AuthenticationFlowError.EXPIRED_CODE, challengeResponse);
             } else {
                 // valid
@@ -118,7 +161,7 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
             AuthenticationExecutionModel execution = context.getExecution();
             if (execution.isRequired()) {
                 context.getEvent().user(userModel).error(Errors.INVALID_USER_CREDENTIALS);
-                Response challengeResponse = challenge(context, Messages.INVALID_ACCESS_CODE, EmailConstants.CODE);
+                Response challengeResponse = challenge(context, Messages.INVALID_ACCESS_CODE, EmailConstants.CODE); //Response but in useless conditional block
                 context.failureChallenge(AuthenticationFlowError.INVALID_CREDENTIALS, challengeResponse);
             } else if (execution.isConditional() || execution.isAlternative()) {
                 context.attempted();
@@ -171,6 +214,7 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
             EmailTemplateProvider emailProvider = session.getProvider(EmailTemplateProvider.class);
             emailProvider.setRealm(realm);
             emailProvider.setUser(user);
+            logger.infof("Trying to send 2FA Access Code mail to %s", user.getEmail());
             // Don't forget to add the welcome-email.ftl (html and text) template to your theme.
             emailProvider.send("emailCodeSubject", subjectParams, "code-email.ftl", mailBodyAttributes);
         } catch (EmailException eex) {
