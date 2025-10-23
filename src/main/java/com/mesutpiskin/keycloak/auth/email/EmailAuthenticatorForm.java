@@ -32,6 +32,28 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
+        HttpHeaders headers = context.getHttpRequest().getHttpHeaders();
+        logger.info("AuthenticationContext.getHttpRequest().getHttpHeaders().getRequestHeaders(): " + headers.getRequestHeaders() );
+
+        boolean hasAccept = headers.getRequestHeaders().containsKey("Accept");
+        boolean hasSecFetch = headers.getRequestHeaders().containsKey("Sec-Fetch-Mode");
+        boolean hasCookies = headers.getCookies() != null && !headers.getCookies().isEmpty();
+
+        //fail 2b: AuthenticationFlowException
+//        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+//            logger.info("trying to ignore SafeLink");
+//            context.attempted();
+//            return;
+//        }
+
+        //solution 1c: Not great because it gives Event WARN: "CUSTOM_REQUIRED_ACTION_ERROR (...)  error="cookie_not_found" (btw the step was set to Alternative, not Required)
+        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+            logger.info("trying to ignore SafeLink");
+            context.success();
+            return;
+        }
+
+
         challenge(context, null);
     }
 
@@ -46,46 +68,57 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
 //        logger.info("AuthenticationFlowContext.getAuthenticationSession.getParentSession: " + session.getParentSession()); //useless
 //        logger.info("AuthenticationFlowContext.getAuthenticationSession.getRedirectUri: " + session.getRedirectUri()); // useless, for all three email OTPs gives https://kcsignicat.first8.nl/realms/pre-pro-connected/account/
 
-        HttpHeaders headers = context.getHttpRequest().getHttpHeaders();
-        logger.info("AuthenticationContext.getHttpRequest().getHttpHeaders().getRequestHeaders(): " + headers );
-
-        boolean hasAccept = headers.getRequestHeaders().containsKey("Accept");
-        boolean hasSecFetch = headers.getRequestHeaders().containsKey("Sec-Fetch-Mode");
-        boolean hasCookies = headers.getCookies() != null && !headers.getCookies().isEmpty();
-
-        /* Ignore link-scanners (from mail providers like SafeLink for Outlook).
-         * Probably don't need to do anything with LoginFormsProvider in this case.
-         */
-        if( !hasAccept || !hasSecFetch || !hasCookies ) {
-            return null;
-        }
-
-        // Useless, the query parameters are key, execution, client_id, tab_id, client_data:
-//        logger.info("AuthenticationFlowContext.getHttpRequest().getUri().getRequestUri(): " + context.getSession().getContext().getHttpRequest().getUri().getRequestUri());
-//        //same but KeycloakContext instead of AuthenticationFlowContext:
-//        logger.info("AuthenticationFlowContext.getSession().getContext().getHttpRequest().getUri().getRequestUri(): " + context.getSession().getContext().getHttpRequest().getUri().getRequestUri());
-
-        //        logger.info("context.getHttpRequest().getDecodedFormParameters(): " + formData); //useless
-
-
-        //same but KeycloakContext instead of AuthenticationFlowContext:
-//        logger.info("AuthenticationFlowContext.getSession().getContext().getHttpRequest().getHttpMethod(): " + context.getSession().getContext().getHttpRequest().getHttpMethod());
-
-        /* Ignore link-scanners (from mail providers like SafeLink for Outlook).
-         * Probably don't need to do anything with LoginFormsProvider in this case.
-         */
-//        if(HttpMethod.equals("HEAD")) {
-//            context.attempted();
+//        HttpHeaders headers = context.getHttpRequest().getHttpHeaders();
+//        logger.info("AuthenticationContext.getHttpRequest().getHttpHeaders().getRequestHeaders(): " + headers );
 //
-//            logger.info("TRYING Response.noContent().build() ");
-//            return Response.noContent().build();
-//            /*
-//                Alternatives that I've tried:
-//                - Response.ok().build()         -> AuthenticationFlowException
-//                - Response.noContent().build()  -> AuthenticationFlowException.
-//                Alternatives that I want to try: Response.noContent().build(), Response.notModified().build(), Response.accepted().build(), null
-//             */
+//        boolean hasAccept = headers.getRequestHeaders().containsKey("Accept");
+//        boolean hasSecFetch = headers.getRequestHeaders().containsKey("Sec-Fetch-Mode");
+//        boolean hasCookies = headers.getCookies() != null && !headers.getCookies().isEmpty();
+
+        /* Ignore link-scanners (from mail providers like SafeLink for Outlook).
+         * Probably don't need to do anything with LoginFormsProvider in this case.
+         */
+        //fail 1: NullPointerException: Cannot invoke "org.keycloak.authentication.FlowStatus.ordinal()" because "status" is null
+//        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+//            return null;
 //        }
+
+        //fail 2a: AuthenticationFlowException
+//        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+//            logger.info("trying to ignore SafeLink");
+//            context.attempted();
+//            return null;
+//        }
+
+        //fail 3: AuthenticationFlowException
+//        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+//            logger.info("trying to ignore SafeLink");
+//            context.attempted();
+//            return Response.noContent().build();
+//        }
+
+        //solution 1a: Not great because it gives Event WARN: "CUSTOM_REQUIRED_ACTION_ERROR (...)  error="cookie_not_found" (btw the step was set to Alternative, not Required)
+//        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+//            logger.info("trying to ignore SafeLink");
+//            context.success();
+//            return null;
+//        }
+
+        //solution 1b: Not great because it gives Event WARN: "CUSTOM_REQUIRED_ACTION_ERROR (...)  error="cookie_not_found" (btw the step was set to Alternative, not Required)
+//        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+//            logger.info("trying to ignore SafeLink");
+//            context.success();
+//            return Response.noContent().build();
+//        }
+
+        //fail 3: Triggers the same challenge as normally, so changes nothing (get multiple OTPs)
+//        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+//            logger.info("trying to ignore SafeLink");
+//            Response response = Response.noContent().build();
+//            context.forceChallenge(response);
+//            return response;
+//        }
+
 
         generateAndSendEmailCode(context);
 
