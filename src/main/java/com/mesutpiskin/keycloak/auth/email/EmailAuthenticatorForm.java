@@ -1,5 +1,6 @@
 package com.mesutpiskin.keycloak.auth.email;
 
+import jakarta.ws.rs.core.HttpHeaders;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.AuthenticationFlowException;
@@ -45,9 +46,19 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
 //        logger.info("AuthenticationFlowContext.getAuthenticationSession.getParentSession: " + session.getParentSession()); //useless
 //        logger.info("AuthenticationFlowContext.getAuthenticationSession.getRedirectUri: " + session.getRedirectUri()); // useless, for all three email OTPs gives https://kcsignicat.first8.nl/realms/pre-pro-connected/account/
 
-        logger.info("AuthenticationContext.getHttpRequest().getHttpHeaders().getRequestHeaders(): " + context.getHttpRequest().getHttpHeaders().getRequestHeaders());
-        // same but KeycloakContext instead of AuthenticationFlowContext:
-//        logger.info("AuthenticationFlowContext.getSession().getContext().getHttpRequest().getHttpHeaders().getRequestHeaders(): " + context.getSession().getContext().getHttpRequest().getHttpHeaders().getRequestHeaders());
+        HttpHeaders headers = context.getHttpRequest().getHttpHeaders();
+        logger.info("AuthenticationContext.getHttpRequest().getHttpHeaders().getRequestHeaders(): " + headers );
+
+        boolean hasAccept = headers.getRequestHeaders().containsKey("Accept");
+        boolean hasSecFetch = headers.getRequestHeaders().containsKey("Sec-Fetch-Mode");
+        boolean hasCookies = headers.getCookies() != null && !headers.getCookies().isEmpty();
+
+        /* Ignore link-scanners (from mail providers like SafeLink for Outlook).
+         * Probably don't need to do anything with LoginFormsProvider in this case.
+         */
+        if( !hasAccept || !hasSecFetch || !hasCookies ) {
+            return null;
+        }
 
         // Useless, the query parameters are key, execution, client_id, tab_id, client_data:
 //        logger.info("AuthenticationFlowContext.getHttpRequest().getUri().getRequestUri(): " + context.getSession().getContext().getHttpRequest().getUri().getRequestUri());
