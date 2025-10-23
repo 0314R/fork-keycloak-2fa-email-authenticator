@@ -32,6 +32,10 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
+
+        String HttpMethod = context.getSession().getContext().getHttpRequest().getHttpMethod();
+        logger.info("HttpMethod: " + HttpMethod);
+
         HttpHeaders headers = context.getHttpRequest().getHttpHeaders();
         logger.info("AuthenticationContext.getHttpRequest().getHttpHeaders().getRequestHeaders(): " + headers.getRequestHeaders() );
 
@@ -60,9 +64,6 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
     @Override
     protected Response challenge(AuthenticationFlowContext context, String error, String field) {
         logger.info("CHALLENGE");
-
-        String HttpMethod = context.getSession().getContext().getHttpRequest().getHttpMethod();
-        logger.info("HttpMethod: " + HttpMethod);
 
 //        logger.info("AuthenticationFlowContext.getAuthenticationSession: " + session); //useless
 //        logger.info("AuthenticationFlowContext.getAuthenticationSession.getParentSession: " + session.getParentSession()); //useless
